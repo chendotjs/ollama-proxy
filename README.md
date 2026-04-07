@@ -20,6 +20,7 @@
 
 | 端点                 | 方法 | 功能描述                     | 兼容性 |
 |----------------------|------|----------------------------|--------|
+| `/api/version`       | GET  | 获取Ollama版本信息           | ✅ 100% |
 | `/v1/models`         | GET  | 获取可用模型列表             | ✅ 100% |
 | `/api/tags`          | GET  | 获取模型标签信息             | ✅ 100% |
 | `/api/show`          | POST | 查看模型详细信息             | ✅ 100% |
@@ -30,11 +31,16 @@
 本代理复用 [Continue.dev](https://docs.continue.dev/reference/) 的配置规范，可直接使用现有Continue配置：
 
 ```yaml
+ollamaVersion: 0.18.2
+listenAddress: "127.0.0.1:11434"  # 可选，默认为 "127.0.0.1:11434"，若需要在容器中运行，这里设置为0.0.0.0:11434
 models:
   - name: Novita deepseek v3
     provider: novita
     model: deepseek/deepseek-v3-0324
     apiKey: sk_xxxxx
+    capabilites:
+      - completion
+      - thinking
   - name: Inference.net DeepSeek V3
     provider: openai
     apiBase: https://api.inference.net/v1
@@ -56,6 +62,24 @@ go build -o ollama-proxy
 启动服务：
 ```bash
 ./ollama-proxy -config /path/to/config.yaml
+```
+
+### 容器化部署
+
+构建镜像：
+
+```bash
+docker build -t ollama-proxy:latest .
+```
+
+运行容器：
+
+```bash
+docker run -d \
+  --name ollama-proxy \
+  -p 11434:11434 \
+  -v /path/to/your/config.yaml:/data/config.yaml \
+  ollama-proxy:latest
 ```
 
 ## 常见问题

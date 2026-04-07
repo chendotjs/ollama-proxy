@@ -45,7 +45,9 @@ type OllamaTagsResponse struct {
 }
 
 type Config struct {
-	Models []ProviderConfig `yaml:"models"`
+	OllamaVersion string           `yaml:"ollamaVersion,omitempty"`
+	ListenAddress string           `yaml:"listenAddress,omitempty"`
+	Models        []ProviderConfig `yaml:"models"`
 }
 
 type responseRecorder struct {
@@ -67,15 +69,16 @@ var providerAPIBaseMap = map[string]string{
 }
 
 type ProviderConfig struct {
-	Name          string `yaml:"name"`
-	Provider      string `yaml:"provider"`
-	APIBase       string `yaml:"apiBase,omitempty"`
-	Model         string `yaml:"model"`
-	APIKey        string `yaml:"apiKey"`
-	SystemMessage string `yaml:"systemMessage"`
-	Modelfile     string `yaml:"modelfile,omitempty"`
-	Parameters    string `yaml:"parameters,omitempty"`
-	Template      string `yaml:"template,omitempty"`
+	Name          string   `yaml:"name"`
+	Provider      string   `yaml:"provider"`
+	APIBase       string   `yaml:"apiBase,omitempty"`
+	Model         string   `yaml:"model"`
+	APIKey        string   `yaml:"apiKey"`
+	SystemMessage string   `yaml:"systemMessage"`
+	Modelfile     string   `yaml:"modelfile,omitempty"`
+	Parameters    string   `yaml:"parameters,omitempty"`
+	Template      string   `yaml:"template,omitempty"`
+	Capabilities  []string `yaml:"capabilities,omitempty"`
 }
 
 var (
@@ -112,6 +115,7 @@ func main() {
 	r.GET("/v1/models", listModels)
 	r.POST("/api/show", showHandler)
 	r.GET("/api/tags", tagsHandler)
+	r.GET("/api/version", versionHandler)
 
 	// 添加根路径处理程序以进行健康检查或基本信息显示
 	r.GET("/", func(c *gin.Context) {
@@ -119,8 +123,14 @@ func main() {
 	})
 
 	go func() {
-		log.Printf("Starting server on http://127.0.0.1:11434")
-		if err := r.Run("127.0.0.1:11434"); err != nil && err != http.ErrServerClosed {
+		configLock.RLock()
+		listenAddr := config.ListenAddress
+		if listenAddr == "" {
+			listenAddr = "127.0.0.1:11434"
+		}
+		configLock.RUnlock()
+		log.Printf("Starting server on http://%s", listenAddr)
+		if err := r.Run(listenAddr); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Failed to start server: %v", err)
 		}
 	}()
@@ -284,7 +294,7 @@ Assistant: {{ .Response }}`
 			"tokenizer.ggml.bos_token_id":            0,
 			"tokenizer.ggml.eos_token_id":            0,
 		},
-		"capabilities": []string{},
+		"capabilities": target.Capabilities,
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -542,4 +552,18 @@ func tagsHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+func versionHandler(c *gin.Context) {
+	configLock.RLock()
+	defer configLock.RUnlock()
+
+	version := config.OllamaVersion
+	if version == "" {
+		version = "unknown"
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"version": version,
+	})
 }

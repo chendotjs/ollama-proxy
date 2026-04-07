@@ -19,6 +19,7 @@ A locally running Ollama-compatible proxy service supporting seamless integratio
 
 | Endpoint                | Method | Description                  | Compatibility |
 |-------------------------|--------|------------------------------|---------------|
+| `/api/version`          | GET    | Get Ollama version info      | ✅ 100%       |
 | `/v1/models`            | GET    | Get available model list     | ✅ 100%       |
 | `/api/tags`             | GET    | Get model tag information    | ✅ 100%       |
 | `/api/show`             | POST   | View model details           | ✅ 100%       |
@@ -29,11 +30,16 @@ A locally running Ollama-compatible proxy service supporting seamless integratio
 This proxy reuses the [Continue.dev](https://docs.continue.dev/reference/) configuration standard and can directly use existing Continue configurations:
 
 ```yaml
+ollamaVersion: 0.18.2
+listenAddress: "127.0.0.1:11434"  # Optional, defaults to "127.0.0.1:11434", set to "0.0.0.0:11434" when using a container
 models:
   - name: Novita deepseek v3
     provider: novita
     model: deepseek/deepseek-v3-0324
     apiKey: sk_xxxxx
+    capabilites:
+      - completion
+      - thinking
   - name: Inference.net DeepSeek V3
     provider: openai
     apiBase: https://api.inference.net/v1
@@ -57,7 +63,23 @@ Start service:
 ./ollama-proxy -config /path/to/config.yaml
 ```
 
+### Container Deployment
 
+Build image:
+
+```bash
+docker build -t ollama-proxy:latest .
+```
+
+Run container:
+
+```bash
+docker run -d \
+  --name ollama-proxy \
+  -p 11434:11434 \
+  -v /path/to/your/config.yaml:/data/config.yaml \
+  ollama-proxy:latest
+```
 
 ## FAQ
 
